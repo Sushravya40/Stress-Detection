@@ -84,9 +84,3 @@ This README now has:
 - Clear project structure  
 - Usage instructions  
 - Future scope & author info  
-
-
-
-
-
-Ask ChatGPT
