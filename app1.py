@@ -1,24 +1,36 @@
-import pandas as pd 
-import numpy as np 
+import os
+from flask import Flask, render_template, request, session, redirect, url_for, flash
+import pandas as pd
+import numpy as np
 from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import RandomForestRegressor, StackingRegressor
+from sklearn.ensemble import RandomForestRegressor, StackingRegressor, AdaBoostRegressor
 from sklearn.tree import ExtraTreeRegressor
-from sklearn.ensemble import AdaBoostRegressor
-from sklearn.metrics import mean_absolute_error,mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
-from flask import *
-import mysql.connector
+import psycopg2
+
+# -------------------------------
+# DATABASE SETUP (PostgreSQL)
+# -------------------------------
+DATABASE_URL = "postgresql://stressdb_y8l1_user:nkUESsYvS6ESRcUCquMOTazBZjCa6GQ4@dpg-d3ae75fdiees73d6lkhg-a/stressdb_y8l1"
+conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+cur = conn.cursor()
+
+# -------------------------------
+# FLASK APP SETUP
+# -------------------------------
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
+
+# -------------------------------
+# ADMIN CREDENTIALS
+# -------------------------------
 admin_email = "admin@example.com"
 admin_password = "admin123"
 
-#Connects to MySQL database Stress1.
-db=mysql.connector.connect(host='localhost',user="root",password="",port='3306',database='Stress1')
-cur=db.cursor()
-
-#Initializes the Flask app with a secret key for managing sessions
-app=Flask(__name__)
-app.secret_key = "fghhdfgdfgrthrttgdfsadfsaffgd"
+# -------------------------------
+# ROUTES
+# -------------------------------
 
 @app.route('/')
 def index():
@@ -32,28 +44,21 @@ def about():
 def home():
     return render_template("userhome.html")
 
-
-from flask import request, session, redirect, url_for, render_template, flash
-
+# -------------------------------
+# ADMIN LOGIN & PANEL
+# -------------------------------
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
     msg = ''
     if request.method == 'POST':
-        email = request.form['email']       # ✅ Use 'email' instead of 'username'
+        email = request.form['email']
         password = request.form['password']
-
-        # Dummy credentials for example
-        if email == 'admin@example.com' and password == 'admin123':
+        if email == admin_email and password == admin_password:
             session['admin_logged_in'] = True
             return redirect(url_for('admin_panel'))
         else:
             msg = 'Invalid email or password!'
     return render_template('admin_login.html', msg=msg)
-
-
-
-
-from flask import session, redirect, url_for, flash, render_template
 
 @app.route('/admin_panel')
 def admin_panel():
@@ -61,16 +66,11 @@ def admin_panel():
         flash('Please log in as admin to access the admin panel.', 'danger')
         return redirect(url_for('admin_login'))
 
-    # Only run these if the admin is logged in
     cur.execute("SELECT * FROM allowed_emails")
     allowed_emails = cur.fetchall()
-
-    cur.execute("SELECT Id, Name, Email FROM user")
+    cur.execute("SELECT Id, Name, Email FROM users")  # Table renamed to "users"
     registered_users = cur.fetchall()
-
-    return render_template('admin_panel.html',
-                           allowed_emails=allowed_emails,
-                           registered_users=registered_users)
+    return render_template('admin_panel.html', allowed_emails=allowed_emails, registered_users=registered_users)
 
 @app.route('/admin_logout')
 def admin_logout():
@@ -78,89 +78,65 @@ def admin_logout():
     flash("🚪 Logged out successfully.", "info")
     return redirect(url_for('admin_login'))
 
-
-
 @app.route('/admin/add_email', methods=['POST'])
 def add_email():
     email = request.form['email']
     try:
         cur.execute("INSERT INTO allowed_emails (email) VALUES (%s)", (email,))
-        db.commit()
+        conn.commit()
         flash("✅ Email added successfully", "success")
     except:
-        db.rollback()
+        conn.rollback()
         flash("❌ Failed to add email", "danger")
     return redirect(url_for('admin_panel'))
-
 
 @app.route('/admin/delete_email/<int:id>')
 def delete_email(id):
     try:
         cur.execute("DELETE FROM allowed_emails WHERE id=%s", (id,))
-        db.commit()
+        conn.commit()
         flash("✅ Allowed email deleted successfully", "success")
     except:
-        db.rollback()
+        conn.rollback()
         flash("❌ Failed to delete allowed email", "danger")
     return redirect(url_for('admin_panel'))
-
 
 @app.route('/admin/delete_user/<int:id>')
 def delete_user(id):
     try:
-        cur.execute("DELETE FROM user WHERE Id=%s", (id,))
-        db.commit()
+        cur.execute("DELETE FROM users WHERE Id=%s", (id,))
+        conn.commit()
         flash("✅ Registered user deleted successfully", "success")
     except:
-        db.rollback()
+        conn.rollback()
         flash("❌ Failed to delete user", "danger")
     return redirect(url_for('admin_panel'))
 
-
-#Displays login page and processes login POST requests.
-@app.route('/login',methods=['POST','GET'])
+# -------------------------------
+# USER LOGIN & REGISTRATION
+# -------------------------------
+@app.route('/login', methods=['POST','GET'])
 def login():
     if request.method=='POST':
-        useremail=request.form['useremail']
-        session['useremail']=useremail
-        userpassword=request.form['userpassword']
-        sql="select count(*) from user where Email='%s' and Password='%s'"%(useremail,userpassword)
-        # cur.execute(sql)
-        # data=cur.fetchall()
-        # db.commit()
+        useremail = request.form['useremail']
+        userpassword = request.form['userpassword']
 
-        #Verifies credentials from the database.
-        x=pd.read_sql_query(sql,db)
-        print(x)
-        print('########################')
-        count=x.values[0][0]
+        cur.execute("SELECT * FROM users WHERE Email=%s AND Password=%s", (useremail, userpassword))
+        data = cur.fetchall()
 
-        from flask import flash, redirect, url_for
-        if count == 0:
+        if not data:
             flash("❌ Invalid email or password. Please try again.", "danger")
             return redirect(url_for('login'))
-
         else:
-            # Extract user info & store in session
-            s="select * from user where Email='%s' and Password='%s'"%(useremail,userpassword)
-            z=pd.read_sql_query(s,db)
-            session['email']=useremail
-            pno=str(z.values[0][4])
-            print(pno)
-            name=str(z.values[0][1])
-            print(name)
-            session['pno']=pno
-            session['name']=name
-            return render_template("userhome.html",myname=name)
+            session['email'] = useremail
+            session['name'] = data[0][1]
+            session['pno'] = str(data[0][4])
+            return render_template("userhome.html", myname=session['name'])
     return render_template('login.html')
-
 
 @app.route('/registration', methods=["POST", "GET"])
 def registration():
-
-    # ✅ Allowed email domains for IT employees
     allowed_domains = ['@techcorp.com', '@itcompany.com', '@cybertech.org', '@datasci.in', '@qaeng.com']
-
     if request.method == 'POST':
         username = request.form['username']
         useremail = request.form['useremail'].lower()
@@ -169,124 +145,91 @@ def registration():
         Age = request.form['Age']
         contact = request.form['contact']
 
-        # ✅ Check if email ends with a valid IT domain
         if not any(useremail.endswith(domain) for domain in allowed_domains):
             flash("❌ Registration allowed only for IT employees with approved email domains.", "danger")
             return redirect("/registration")
 
-        # ✅ Password match check
-        if userpassword == conpassword:
-            cur.execute("SELECT * FROM user WHERE Email=%s", (useremail,))
-            data = cur.fetchall()
-            db.commit()
-
-            if data == []:
-                sql = "INSERT INTO user(Name, Email, Password, Age, Mob) VALUES (%s, %s, %s, %s, %s)"
-                val = (username, useremail, userpassword, Age, contact)
-                cur.execute(sql, val)
-                db.commit()
-                flash("✅ Registered successfully", "success")
-                return redirect("/login")
-            else:
-                flash("⚠️ User already registered. Try logging in.", "warning")
-                return redirect("/registration")
-        else:
+        if userpassword != conpassword:
             flash("⚠️ Passwords do not match.", "warning")
             return redirect("/registration")
 
+        cur.execute("SELECT * FROM users WHERE Email=%s", (useremail,))
+        data = cur.fetchall()
+        if not data:
+            cur.execute("INSERT INTO users(Name, Email, Password, Age, Mob) VALUES (%s, %s, %s, %s, %s)",
+                        (username, useremail, userpassword, Age, contact))
+            conn.commit()
+            flash("✅ Registered successfully", "success")
+            return redirect("/login")
+        else:
+            flash("⚠️ User already registered. Try logging in.", "warning")
+            return redirect("/registration")
     return render_template('registration.html')
 
+# -------------------------------
+# DATASET LOAD & PREPROCESS
+# -------------------------------
+DATASET_URL = "https://YOUR_RENDER_FILE_URL/stress_detection_IT_professionals_dataset.csv"
+x_train = x_test = y_train = y_test = df = None
 
-#Loads CSV dataset and renders in HTML table using to_html().
-@app.route('/viewdata',methods=["GET","POST"])
+@app.route('/viewdata', methods=["GET","POST"])
 def viewdata():
-    dataset = pd.read_csv(r'D:\C drive download\Downloads\TK191129--STRESS DETECTION IN IT PROFESSIONALS USING MACHINE LEARNING\CODE\FROUNTEND\stress_detection_IT_professionals_dataset.csv')
-    dataset.to_html()
-    print(dataset)
-    print(dataset.head(2))
-    print(dataset.columns)
-    return render_template("viewdata.html", columns=dataset.columns.values, rows=dataset.values.tolist())
-#Loads the CSV file and splits into x (features) and y (labels).
+    df = pd.read_csv(DATASET_URL)
+    return render_template("viewdata.html", columns=df.columns.values, rows=df.values.tolist())
 
 @app.route('/preprocess', methods=['GET'])
 def preprocess():
     global x, y, x_train, x_test, y_train, y_test, df
-
-    # Load and preprocess automatically
-    df = pd.read_csv(r'D:\C drive download\Downloads\TK191129--STRESS DETECTION IN IT PROFESSIONALS USING MACHINE LEARNING\CODE\FROUNTEND\stress_detection_IT_professionals_dataset.csv')
-
+    df = pd.read_csv(DATASET_URL)
     x = df.drop('Stress_Level', axis=1)
     y = df['Stress_Level']
-
-    # Default test size = 30%
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
+    return render_template('preprocess.html', msg='✅ Data preprocessed successfully!')
 
-    print("X_train shape:", x_train.shape)
-    print("Y_train shape:", y_train.shape)
-    print("X_test shape:", x_test.shape)
-    print("Y_test shape:", y_test.shape)
-
-    return render_template('preprocess.html', msg='✅ Data preprocessed automatically using 30% test split.')
-
-#Chooses and trains models based on user selection (algo from form).
+# -------------------------------
+# MODEL TRAINING
+# -------------------------------
 @app.route('/model', methods=["POST", "GET"])
 def model():
     global x_train, y_train, x_test, y_test
     try:
-        _ = x_train.shape  # Check if x_train is defined
+        _ = x_train.shape
     except NameError:
         return render_template("model.html", msg="⚠️ Please run Preprocess first!")
 
     if request.method == "POST":
         s = int(request.form['algo'])
-
-        if s == 0:
-            return render_template('model.html', msg="Choose an algorithm")
-
-        elif s == 1:
+        if s == 1:
             rf = RandomForestRegressor()
             rf.fit(x_train, y_train)
             y_pred = rf.predict(x_test)
-            score = r2_score(y_pred, y_test) * 100
+            score = r2_score(y_test, y_pred) * 100
             return render_template("model.html", msg=f"RandomForestRegressor Accuracy: {score:.2f}%")
-
         elif s == 2:
             ad = AdaBoostRegressor()
             ad.fit(x_train, y_train)
             y_pred = ad.predict(x_test)
-            score = r2_score(y_pred, y_test) * 100
+            score = r2_score(y_test, y_pred) * 100
             return render_template("model.html", msg=f"AdaBoostRegressor Accuracy: {score:.2f}%")
-
         elif s == 3:
             ex = ExtraTreeRegressor()
             ex.fit(x_train, y_train)
             y_pred = ex.predict(x_test)
-            score = r2_score(y_pred, y_test) * 100
+            score = r2_score(y_test, y_pred) * 100
             return render_template("model.html", msg=f"ExtraTreeRegressor Accuracy: {score:.2f}%")
-
         elif s == 4:
-            base_model = [
-                ('rf', RandomForestRegressor()),
-                ('dt', ExtraTreeRegressor()),
-            ]
+            base_model = [('rf', RandomForestRegressor()), ('dt', ExtraTreeRegressor())]
             meta_model = AdaBoostRegressor()
             stc = StackingRegressor(estimators=base_model, final_estimator=meta_model)
             stc.fit(x_train, y_train)
             y_pred = stc.predict(x_test)
-            score = r2_score(y_pred, y_test) * 100
+            score = r2_score(y_test, y_pred) * 100
             return render_template("model.html", msg=f"Stacking Accuracy: {score:.2f}%")
-
-        elif s == 5:
-            from sklearn.tree import DecisionTreeClassifier
-            dt = DecisionTreeClassifier()
-            dt.fit(x_train, y_train)
-            y_pred = dt.predict(x_test)
-            score = r2_score(y_pred, y_test) * 100
-            return render_template("model.html", msg=f"DecisionTree Accuracy: {score:.2f}%")
-
     return render_template("model.html")
 
-
+# -------------------------------
+# PREDICTION
+# -------------------------------
 @app.route('/prediction', methods=["POST", "GET"])
 def prediction():
     if request.method == "POST":
@@ -298,101 +241,63 @@ def prediction():
             f5 = float(request.form['Meetings_Attended'])
             date = request.form['date']
             email = session.get('email')
-
             lee = [f1, f2, f3, f4, f5]
-            print(lee)
-
-            # 🚫 Invalid input checks
-            if all(v == 0 for v in lee) or any(v < 0 for v in lee):
-                msg = "⚠️ Invalid input: All fields must be filled with non-zero, non-negative values."
-                return render_template("prediction.html", msg=msg)
-
-            if f1 > 200 or f2 > 20 or f3 > 24 or f4 > 500 or f5 > 15:
-                msg = "⚠️ One or more fields exceed realistic human/workplace limits. Please enter valid values."
-                return render_template("prediction.html", msg=msg)
-
         except (ValueError, KeyError):
-            msg = "⚠️ Invalid input: Please make sure all fields are filled with valid numbers."
+            msg = "⚠️ Invalid input. Fill all fields correctly."
             return render_template("prediction.html", msg=msg)
 
-        # ✅ Train model and predict
         model = RandomForestRegressor()
         model.fit(x_train, y_train)
-        result = model.predict([lee])
-        print(result)
+        result = model.predict([lee])[0]
 
-        # 💾 Save result to database
-        sql = """
-        INSERT INTO stress_prediction 
-        (email, heart_rate, skin_conductivity, hours_worked, emails_sent, meetings_attended, prediction, date)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        val = (email, f1, f2, f3, f4, f5, float(result[0]), date)
-        cur.execute(sql, val)
-        db.commit()
+        cur.execute("""INSERT INTO stress_prediction 
+                       (email, heart_rate, skin_conductivity, hours_worked, emails_sent, meetings_attended, prediction, date)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (email, f1, f2, f3, f4, f5, float(result), date))
+        conn.commit()
 
-        # 🧠 Result Message and Suggestions
-        stress_value = float(result[0])
-        msg = f"The Stress level of this IT Professional is {stress_value:.2f}%"
-        counseling_links = None
-
+        stress_value = float(result)
         if stress_value < 20:
-            suggestion = """Low Stress: Great job! Maintain your routine with
-                            - Regular physical activity
-                            - Adequate sleep
-                            - Balanced diet"""
+            suggestion = "Low Stress: Maintain healthy routine, sleep well, exercise."
+            counseling_links = None
         elif stress_value < 30:
-            suggestion = """Moderate Stress: Consider:
-                            - Taking short breaks between tasks
-                            - Practicing deep breathing or meditation
-                            - Avoiding multitasking"""
+            suggestion = "Moderate Stress: Take breaks, practice meditation, avoid multitasking."
+            counseling_links = None
         else:
-            suggestion = """High Stress: Immediate attention recommended:
-                            - Speak to a counselor or mental health expert
-                            - Reduce screen time & emails after work hours
-                            - Take a few days off to rest and recover"""
+            suggestion = "High Stress: Seek counseling, reduce workload, rest."
             counseling_links = [
                 {"name": "NIMHANS", "url": "https://www.nimhans.ac.in/"},
                 {"name": "iCall by TISS", "url": "https://icallhelpline.org/"},
                 {"name": "YourDOST", "url": "https://yourdost.com/"},
-                {"name": "BetterLYF", "url": "https://www.betterlyf.com/"},
-                {"name": "MindPeers", "url": "https://www.mindpeers.co/"},
             ]
-
+        msg = f"The Stress level of this IT Professional is {stress_value:.2f}%"
         return render_template('prediction.html', msg=msg, suggestion=suggestion, counseling_links=counseling_links)
-
     return render_template("prediction.html")
 
-
-from datetime import datetime, timedelta
-
+# -------------------------------
+# DASHBOARD
+# -------------------------------
 @app.route('/dashboard')
 def dashboard():
     email = session.get('email')
-    filter_type = request.args.get('filter', 'all')  # default = 'all'
+    filter_type = request.args.get('filter', 'all')
 
     if filter_type == 'week':
         from datetime import datetime, timedelta
         today = datetime.today()
         week_ago = today - timedelta(days=7)
-        cur.execute("""
-            SELECT date, prediction FROM stress_prediction 
-            WHERE email = %s AND date >= %s 
-            ORDER BY date
-        """, (email, week_ago.strftime('%Y-%m-%d')))
+        cur.execute("""SELECT date, prediction FROM stress_prediction 
+                       WHERE email=%s AND date >= %s ORDER BY date""", (email, week_ago.strftime('%Y-%m-%d')))
     else:
-        cur.execute("""
-            SELECT date, prediction FROM stress_prediction 
-            WHERE email = %s 
-            ORDER BY date
-        """, (email,))
-
+        cur.execute("""SELECT date, prediction FROM stress_prediction 
+                       WHERE email=%s ORDER BY date""", (email,))
     data = cur.fetchall()
     dates = [str(row[0]) for row in data]
     stress_levels = [row[1] for row in data]
-
     return render_template('dashboard.html', dates=dates, stress_levels=stress_levels, current_filter=filter_type)
 
-#Starts the Flask app in debug mode.
-if __name__=="__main__":
-    app.run(debug=True)
+# -------------------------------
+# RUN APP
+# -------------------------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
