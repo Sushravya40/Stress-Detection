@@ -29,3 +29,43 @@ stress-detection/
 │-- app.py # Main application file
 │-- requirements.txt # Dependencies
 │-- README.md # Project documentation
+
+
+## ▶️ How to Run
+1. Clone the repository:
+   git clone https://github.com/Sushravya40/stress-detection.git
+   cd stress-detection
+   
+2 Install dependencies:
+pip install -r requirements.txt
+
+3. Run the application:
+python app.py
+
+
+📊 Results
+Model accuracy achieved: XX%
+
+Best performing algorithm: XYZ
+
+📌 Future Scope
+Real-time stress detection
+
+Mobile/Cloud deployment
+
+Integration with wearable devices
+
+👨‍💻 Author
+Sushravya
+GitHub: Sushravya40
+
+Now you can **copy this entire block in one click** and save it as `README.md`.  
+
+
+
+
+
+
+
+
+Ask ChatGPT
