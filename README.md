@@ -61,11 +61,3 @@ GitHub: Sushravya40
 
 Now you can **copy this entire block in one click** and save it as `README.md`.  
 
-
-
-
-
-
-
-
-Ask ChatGPT
