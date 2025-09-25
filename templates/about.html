@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stress Detection</title>
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"/>
+
+  <!-- Custom Styles -->
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #0f1c2e;
+      color: #fff;
+    }
+
+    /* Navbar */
+    #sticker {
+      background-color: #0c192c;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    #sticker .nav-link {
+      color: #fff !important;
+      font-weight: 500;
+      transition: 0.3s;
+    }
+
+    #sticker .nav-link:hover {
+      color: #ffc107 !important;
+    }
+
+    /* Hero area fix */
+    .hero-area {
+      background-image: url('/static/img/stress-main.png'); /* replace with your image path */
+      background-size: cover;
+      background-position: center;
+      padding-top: 140px; /* FIXED spacing below navbar */
+      padding-bottom: 60px;
+    }
+
+    .hero-area h3 {
+      font-size: 2.2rem;
+      font-weight: bold;
+    }
+
+    .hero-area p {
+      color: azure;
+      font-size: 1rem;
+      line-height: 1.8;
+      text-align: justify;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav id="sticker" class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+      <a class="navbar-brand" href="/">Stress Detection</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="/login">Login</a></li>
+          <li class="nav-item"><a class="nav-link" href="/registration">Register</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero / About Section -->
+  <div class="hero-area">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-10 offset-lg-1">
+          <div class="text-white">
+            <h3 class="mb-4">About the Stress Detection System</h3>
+            <p>
+              This project is designed to help IT professionals understand and manage their stress levels using intelligent machine learning techniques.
+              By analyzing behavioral data such as workload, work hours, and task pressure, the system predicts whether a user’s stress level is <strong>Low, Moderate, or High</strong>.
+              <br><br>
+              At its core, the system uses a <strong>stacked ensemble machine learning model</strong> that combines the strengths of algorithms like
+              <strong>Random Forest, AdaBoost, Extra Trees, and SVM</strong> to deliver highly accurate and reliable predictions.
+              When high stress is detected, the system not only alerts the user but also provides custom suggestions, including guided meditation videos from YouTube and useful links to counseling and mental health support platforms.
+              <br><br>
+              This tool aims to promote a healthier work environment by offering timely insights and actionable resources — because your mental well-being matters.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

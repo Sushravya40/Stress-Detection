@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stress Detection</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: url('/static/img/worklife-balance.png.png') no-repeat center center fixed;
+      background-size: cover;
+    }
+
+    .overlay {
+      background-color: rgba(0, 0, 0, 0.6);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .form-container {
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 40px;
+      border-radius: 16px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .form-title {
+      font-weight: 600;
+      color: #333;
+      text-align: center;
+      margin-bottom: 25px;
+      font-size: 1.5rem;
+    }
+
+    .form-control {
+      height: 50px;
+      border-radius: 12px;
+    }
+
+    .submit-btn {
+      background-color: #ff9800;
+      color: white;
+      font-weight: bold;
+      padding: 12px;
+      border: none;
+      border-radius: 25px;
+      width: 100%;
+      transition: 0.3s;
+    }
+
+    .submit-btn:hover {
+      background-color: #f57c00;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .message-box {
+      text-align: center;
+      margin-bottom: 15px;
+      font-weight: 500;
+      color: #d32f2f;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Overlay Wrapper -->
+  <div class="overlay">
+
+    <div class="form-container">
+
+      <!-- Home Button (top right) -->
+      <div class="text-end mb-2">
+        <a href="/home" class="btn btn-outline-primary">Home</a>
+      </div>
+
+      <div class="form-title">Stress Detection for IT Professionals</div>
+
+      {% if msg %}
+        <div class="message-box">{{ msg }}</div>
+      {% endif %}
+      {% if suggestion %}
+        <div class="message-box">{{ suggestion }}</div>
+      {% endif %}
+
+      {% if counseling_links %}
+        <div style="background: #fdecea; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+          <h6 style="color: #d32f2f;">Helpful Counseling Resources:</h6>
+          <ul>
+            {% for link in counseling_links %}
+              <li><a href="{{ link.url }}" target="_blank" style="color:#d32f2f;">{{ link.name }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <!-- Form Starts -->
+      <form action="/prediction" method="post">
+        <div class="row g-3">
+          <div class="col-md-12">
+            <input type="date" name="date" class="form-control" required placeholder="Date">
+          </div>
+          <div class="col-md-6">
+            <input type="number" step="any" name="Heart_Rate" class="form-control" placeholder="Heart Rate">
+          </div>
+          <div class="col-md-6">
+            <input type="number" step="any" name="Skin_Conductivity" class="form-control" placeholder="Skin Conductivity">
+          </div>
+          <div class="col-md-6">
+            <input type="number" step="any" name="Hours_Worked" class="form-control" placeholder="Hours Worked">
+          </div>
+          <div class="col-md-6">
+            <input type="number" step="any" name="Emails_Sent" class="form-control" placeholder="Emails Sent">
+          </div>
+          <div class="col-md-12">
+            <input type="number" step="any" name="Meetings_Attended" class="form-control" placeholder="Meetings Attended">
+          </div>
+          <div class="col-md-12">
+            <button type="submit" class="submit-btn mt-3">Submit</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Videos -->
+      {% if suggestion and "Moderate Stress" in suggestion %}
+        <div class="mt-4">
+          <h6>🟡 Try this 5-min calm breathing meditation:</h6>
+          <iframe width="100%" height="315" src="https://www.youtube.com/embed/inpok4MKVLM" frameborder="0" allowfullscreen></iframe>
+        </div>
+      {% elif suggestion and "High Stress" in suggestion %}
+        <div class="mt-4">
+          <h6>🔴 Try this 10-min guided meditation for anxiety:</h6>
+          <iframe width="100%" height="315" src="https://www.youtube.com/embed/O-6f5wQXSu8" frameborder="0" allowfullscreen></iframe>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

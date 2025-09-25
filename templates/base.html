@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="Responsive Bootstrap4 Shop Template">
+
+	<title>Stress Detection</title>
+
+	<link rel="shortcut icon" type="image/png" href="static/img/appicon2.png">
+	<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,700" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Poppins:400,700&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="static/css/all.min.css">
+	<link rel="stylesheet" href="static/bootstrap/css/bootstrap.min.css">
+	<link rel="stylesheet" href="static/css/owl.carousel.css">
+	<link rel="stylesheet" href="static/css/magnific-popup.css">
+	<link rel="stylesheet" href="static/css/animate.css">
+	<link rel="stylesheet" href="static/css/meanmenu.min.css">
+	<link rel="stylesheet" href="static/css/main.css">
+	<link rel="stylesheet" href="static/css/responsive.css">
+
+	<style>
+		body {
+			background-image: url('/static/img/worklife-balance.png.png');
+			background-size: cover;
+			background-repeat: no-repeat;
+		}
+		.alert {
+			font-size: 16px;
+			padding: 12px 20px;
+			border-radius: 10px;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+			margin-top: 20px;
+		}
+	</style>
+</head>
+<body>
+	<div class="top-header-area" id="sticker">
+		<div class="container">
+			<div class="row">
+				<div class="col-lg-12 col-sm-12 text-center">
+					<div class="main-menu-wrap">
+						<nav class="main-menu">
+							<ul>
+								<li><a href="/">Home</a></li>
+								<li><a href="/about">About</a></li>
+								<li class="active"><a href="/login">Log In</a></li>
+								<li><a href="/registration">Register</a></li>
+							</ul>
+						</nav>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- ✅ Centered Flash Messages -->
+	{% with messages = get_flashed_messages(with_categories=true) %}
+	  {% if messages %}
+		<div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; max-width: 600px; width: 90%;">
+		  {% for category, message in messages %}
+			<div class="alert alert-{{ category }} alert-dismissible fade show text-center" role="alert">
+			  <i class="fas fa-info-circle me-2"></i> {{ message }}
+			  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+			</div>
+		  {% endfor %}
+		</div>
+	  {% endif %}
+	{% endwith %}
+
+	<div class="hero-area hero-bg" style="background-image:url('/static/img/worklife-balance.png.png');">
+		<div class="container">
+			<div class="col-lg-7">
+				<div class="mb-4" style="padding-top: 184px;">
+					{% block code %}{% endblock %}
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script src="static/js/jquery-1.11.3.min.js"></script>
+	<script src="static/bootstrap/js/bootstrap.bundle.min.js"></script>
+	<script src="static/js/main.js"></script>
+	<script>
+		setTimeout(() => {
+			const alert = document.querySelector('.alert');
+			if (alert) {
+				alert.classList.remove('show');
+				alert.classList.add('fade');
+			}
+		}, 3000);
+	</script>
+</body>
+</html>

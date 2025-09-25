@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block code %}
+<h1 style="color: aliceblue;">User Registration</h1>
+<form action="{{ url_for('registration') }}" method="post">
+    <div class="form-group">
+        <input type="text" name="username" class="form-control p-4" placeholder="Enter Your Name" required />
+    </div><br>
+    <div class="form-group">
+        <input type="email" name="useremail" class="form-control p-4" placeholder="Enter Your Email" required />
+    </div><br>
+    <div class="form-group">
+        <input type="password" name="userpassword" class="form-control p-4" placeholder="Enter Your Password" required />
+    </div><br>
+    <div class="form-group">
+        <input type="password" name="conpassword" class="form-control p-4" placeholder="Confirm Your Password" required />
+    </div><br>
+    <div class="form-group">
+        <input type="number" name="Age" class="form-control p-4" placeholder="Age" required />
+    </div><br>
+    <div class="form-group">
+        <input type="tel" name="contact" class="form-control p-4" placeholder="Enter Your Contact" required />
+    </div><br>
+    <div>
+        <button type="submit" class="btn btn-primary btn-block p-2">Sign Up</button>
+    </div><br>
+</form>
+{% endblock %}

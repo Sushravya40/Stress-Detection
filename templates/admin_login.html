@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Login</title>
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+    <style>
+        body {
+            background-image: url('/static/images/360_.jpg'); /* <-- Update path if needed */
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            min-height: 100vh;
+            color: white;
+        }
+
+        .form-container {
+            background-color: rgba(0, 0, 0, 0.6); /* Dark transparent box */
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        h2 {
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body class="d-flex align-items-center justify-content-center">
+
+    <div class="form-container w-50">
+        <h2 class="mb-4 text-center">🔐 Admin Login</h2>
+        <form action="{{ url_for('admin_login') }}" method="post">
+            <div class="form-group">
+                <input type="email" name="email" class="form-control p-3" placeholder="Admin Email" required>
+            </div><br>
+            <div class="form-group">
+                <input type="password" name="password" class="form-control p-3" placeholder="Password" required>
+            </div><br>
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-success">Login</button>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">🏠 Back to Home</a>
+            </div>
+        </form>
+        {% if msg %}
+        <p class="text-danger mt-3">{{ msg }}</p>
+        {% endif %}
+    </div>
+
+</body>
+</html>

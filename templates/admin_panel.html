@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+</head>
+<body class="container mt-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-center flex-grow-1">Admin Control Panel</h2>
+    <a href="{{ url_for('admin_logout') }}" class="btn btn-warning">🚪 Logout</a>
+</div>
+
+
+    <!-- Flash Message Block -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="text-center">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show d-inline-block font-weight-bold" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Allowed Emails Section -->
+    <div class="mb-5">
+        <h4>✅ Allowed Emails (for Registration)</h4>
+
+        <form action="{{ url_for('add_email') }}" method="post" class="form-inline mb-3">
+            <input type="email" name="email" class="form-control mr-2" placeholder="Add email to allow" required>
+            <button type="submit" class="btn btn-success">Add</button>
+        </form>
+
+        <table class="table table-bordered table-sm">
+            <thead class="thead-dark">
+                <tr>
+                    <th>#</th>
+                    <th>Email</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for email in allowed_emails %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ email[1] }}</td>
+                    <td>
+                        <a href="{{ url_for('delete_email', id=email[0]) }}" class="btn btn-danger btn-sm"
+                           onclick="return confirm('Are you sure you want to remove this allowed email?')">Delete</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3">No allowed emails yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Registered Users Section -->
+    <div>
+        <h4>📋 Registered User Emails</h4>
+        <table class="table table-bordered table-sm">
+            <thead class="thead-dark">
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+           <tbody>
+    {% for user in registered_users %}
+    <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ user[1] }}</td>
+        <td>{{ user[2] }}</td>
+        <td>
+            <a href="{{ url_for('delete_user', id=user[0]) }}" class="btn btn-danger btn-sm"
+               onclick="return confirm('Are you sure you want to delete this registered user?')">Delete</a>
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No registered users found.</td></tr>
+    {% endfor %}
+</tbody>
+
+
+<a href="/" class="btn btn-secondary mt-4">⬅ Back to Home</a>
+
+    <!-- Auto Dismiss Script -->
+    <script>
+        setTimeout(function () {
+            var alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                alert.classList.remove('show');
+                alert.classList.add('fade');
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 3000);
+    </script>
+
+</body>
+</html>
