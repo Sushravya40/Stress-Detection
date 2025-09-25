@@ -30,7 +30,20 @@ stress-detection/
 │-- requirements.txt # Dependencies
 │-- README.md # Project documentation
 
+## 📂 Dataset
 
+The dataset used in this project is from Kaggle:  
+[Stress Detection in IT Professionals Dataset](https://www.kaggle.com/datasets/csepython/stress-detection-it-professionals-dataset)
+
+**How to Use It:**
+1. Download the dataset from Kaggle (you’ll need a Kaggle account).  
+2. Put the CSV/data file(s) inside the `data/` folder of this repo.  
+3. In your code, load it like:
+   ```python
+   import pandas as pd
+
+   df = pd.read_csv("data/your_dataset_file.csv")
+   
 ## ▶️ How to Run
 1. Clone the repository:
    git clone https://github.com/Sushravya40/stress-detection.git
