@@ -1,5 +1,9 @@
 # Stress Detection in IT Professionals using Machine Learning
 
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Status](https://img.shields.io/badge/Status-Active-brightgreen)
+
 This project focuses on detecting stress levels in IT professionals using machine learning techniques.  
 It uses data preprocessing, feature extraction, and classification models to predict stress levels.
 
