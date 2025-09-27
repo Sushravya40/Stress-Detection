@@ -144,6 +144,7 @@ def login():
             return render_template("userhome.html", myname=session['name'])
     return render_template('login.html')
 @app.route('/registration', methods=["POST", "GET"])
+
 def registration():
     allowed_domains = ['@techcorp.com', '@itcompany.com', '@cybertech.org', '@datasci.in', '@qaeng.com']
 
@@ -173,7 +174,7 @@ def registration():
             try:
                 cur.execute(
                     "INSERT INTO users(Name, Email, Password, Age, Mob) VALUES (%s, %s, %s, %s, %s)",
-                    (username, useremail, userpassword, int(Age), contact)
+                    (username, useremail, userpassword, Age, contact)
                 )
                 conn.commit()
                 flash("✅ Registered successfully", "success")
