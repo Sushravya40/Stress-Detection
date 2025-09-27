@@ -25,8 +25,9 @@ app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
 # -------------------------------
 # ADMIN CREDENTIALS
 # -------------------------------
-admin_email = "admin@example.com"
-admin_password = "admin123"
+
+admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
+admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
 
 # -------------------------------
 # ROUTES
