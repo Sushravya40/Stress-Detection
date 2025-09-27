@@ -11,7 +11,7 @@ import psycopg2
 # -------------------------------
 # DATABASE SETUP (PostgreSQL)
 # -------------------------------
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:pass@host/dbname")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://stressdb_y8l1_user:nkUESsYvS6ESRcUCquMOTazBZjCa6GQ4@dpg-d3ae75fdiees73d6lkhg-a/stressdb_y8l1")
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cur = conn.cursor()
 
@@ -92,7 +92,6 @@ def add_email():
         flash(f"❌ Failed to add email: {str(e)}", "danger")
     return redirect(url_for('admin_panel'))
 
-
 @app.route('/admin/delete_email/<int:id>')
 def delete_email(id):
     try:
@@ -126,18 +125,18 @@ def login():
         cur.execute("SELECT * FROM users WHERE Email=%s AND Password=%s", (useremail, userpassword))
         data = cur.fetchall()
         if not data:
-            flash("❌ Invalid email or password.", "danger")
+            flash("❌ Invalid email or password. Please try again.", "danger")
             return redirect(url_for('login'))
-        session['email'] = useremail
-        session['name'] = data[0][1]
-        session['pno'] = str(data[0][4])
-        return render_template("userhome.html", myname=session['name'])
+        else:
+            session['email'] = useremail
+            session['name'] = data[0][1]
+            session['pno'] = str(data[0][4])
+            return render_template("userhome.html", myname=session['name'])
     return render_template('login.html')
 
 @app.route('/registration', methods=['POST','GET'])
 def registration():
     allowed_domains = ['@techcorp.com', '@itcompany.com', '@cybertech.org', '@datasci.in', '@qaeng.com']
-    
     if request.method == 'POST':
         username = request.form['username']
         useremail = request.form['useremail'].lower()
@@ -146,17 +145,14 @@ def registration():
         Age = request.form['Age']
         contact = request.form['contact']
 
-        # Email domain check
         if not any(useremail.endswith(domain) for domain in allowed_domains):
             flash("❌ Registration allowed only for IT employees.", "danger")
             return redirect("/registration")
 
-        # Password match
         if userpassword != conpassword:
             flash("⚠️ Passwords do not match.", "warning")
             return redirect("/registration")
 
-        # Check if user exists
         cur.execute("SELECT * FROM users WHERE Email=%s", (useremail,))
         data = cur.fetchall()
 
@@ -176,22 +172,20 @@ def registration():
         else:
             flash("⚠️ User already registered. Try logging in.", "warning")
             return redirect("/registration")
-    
     return render_template('registration.html')
-
 
 # -------------------------------
 # DATASET LOAD & PREPROCESS
 # -------------------------------
-DATASET_URL = "https://YOUR_RENDER_FILE_URL/stress_detection_IT_professionals_dataset.csv"
+DATASET_URL = os.environ.get("DATASET_URL")  # Set this in Render
 x_train = x_test = y_train = y_test = df = None
 
-@app.route('/viewdata', methods=['GET','POST'])
+@app.route('/viewdata')
 def viewdata():
     df = pd.read_csv(DATASET_URL)
     return render_template("viewdata.html", columns=df.columns.values, rows=df.values.tolist())
 
-@app.route('/preprocess', methods=['GET'])
+@app.route('/preprocess')
 def preprocess():
     global x, y, x_train, x_test, y_train, y_test, df
     df = pd.read_csv(DATASET_URL)
@@ -203,41 +197,104 @@ def preprocess():
 # -------------------------------
 # MODEL TRAINING
 # -------------------------------
-@app.route('/model', methods=['POST','GET'])
+@app.route('/model', methods=["POST","GET"])
 def model():
     global x_train, y_train, x_test, y_test
     try:
         _ = x_train.shape
     except NameError:
         return render_template("model.html", msg="⚠️ Please run Preprocess first!")
-    if request.method == 'POST':
+    if request.method=="POST":
         s = int(request.form['algo'])
         if s == 1:
-            rf = RandomForestRegressor()
-            rf.fit(x_train, y_train)
-            score = r2_score(y_test, rf.predict(x_test)) * 100
+            rf = RandomForestRegressor(); rf.fit(x_train, y_train)
+            y_pred = rf.predict(x_test)
+            score = r2_score(y_test, y_pred) * 100
             return render_template("model.html", msg=f"RandomForestRegressor Accuracy: {score:.2f}%")
         elif s == 2:
-            ad = AdaBoostRegressor()
-            ad.fit(x_train, y_train)
-            score = r2_score(y_test, ad.predict(x_test)) * 100
+            ad = AdaBoostRegressor(); ad.fit(x_train, y_train)
+            y_pred = ad.predict(x_test)
+            score = r2_score(y_test, y_pred) * 100
             return render_template("model.html", msg=f"AdaBoostRegressor Accuracy: {score:.2f}%")
         elif s == 3:
-            ex = ExtraTreeRegressor()
-            ex.fit(x_train, y_train)
-            score = r2_score(y_test, ex.predict(x_test)) * 100
+            ex = ExtraTreeRegressor(); ex.fit(x_train, y_train)
+            y_pred = ex.predict(x_test)
+            score = r2_score(y_test, y_pred) * 100
             return render_template("model.html", msg=f"ExtraTreeRegressor Accuracy: {score:.2f}%")
         elif s == 4:
             base_model = [('rf', RandomForestRegressor()), ('dt', ExtraTreeRegressor())]
             meta_model = AdaBoostRegressor()
             stc = StackingRegressor(estimators=base_model, final_estimator=meta_model)
             stc.fit(x_train, y_train)
-            score = r2_score(y_test, stc.predict(x_test)) * 100
+            y_pred = stc.predict(x_test)
+            score = r2_score(y_test, y_pred) * 100
             return render_template("model.html", msg=f"Stacking Accuracy: {score:.2f}%")
     return render_template("model.html")
 
 # -------------------------------
+# PREDICTION
+# -------------------------------
+@app.route('/prediction', methods=["POST","GET"])
+def prediction():
+    if request.method=="POST":
+        try:
+            f1 = float(request.form['Heart_Rate'])
+            f2 = float(request.form['Skin_Conductivity'])
+            f3 = float(request.form['Hours_Worked'])
+            f4 = float(request.form['Emails_Sent'])
+            f5 = float(request.form['Meetings_Attended'])
+            date = request.form['date']
+            email = session.get('email')
+            lee = [f1,f2,f3,f4,f5]
+        except:
+            return render_template("prediction.html", msg="⚠️ Invalid input. Fill all fields correctly.")
+        model = RandomForestRegressor(); model.fit(x_train, y_train)
+        result = model.predict([lee])[0]
+        cur.execute("""INSERT INTO stress_prediction 
+                       (email, heart_rate, skin_conductivity, hours_worked, emails_sent, meetings_attended, prediction, date)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (email, f1,f2,f3,f4,f5,float(result), date))
+        conn.commit()
+        stress_value = float(result)
+        if stress_value < 20:
+            suggestion = "Low Stress: Maintain healthy routine, sleep well, exercise."
+            counseling_links = None
+        elif stress_value < 30:
+            suggestion = "Moderate Stress: Take breaks, practice meditation, avoid multitasking."
+            counseling_links = None
+        else:
+            suggestion = "High Stress: Seek counseling, reduce workload, rest."
+            counseling_links = [
+                {"name":"NIMHANS","url":"https://www.nimhans.ac.in/"},
+                {"name":"iCall by TISS","url":"https://icallhelpline.org/"},
+                {"name":"YourDOST","url":"https://yourdost.com/"},
+            ]
+        msg = f"The Stress level of this IT Professional is {stress_value:.2f}%"
+        return render_template('prediction.html', msg=msg, suggestion=suggestion, counseling_links=counseling_links)
+    return render_template("prediction.html")
+
+# -------------------------------
+# DASHBOARD
+# -------------------------------
+@app.route('/dashboard')
+def dashboard():
+    email = session.get('email')
+    filter_type = request.args.get('filter', 'all')
+    from datetime import datetime, timedelta
+    if filter_type == 'week':
+        today = datetime.today()
+        week_ago = today - timedelta(days=7)
+        cur.execute("""SELECT date,prediction FROM stress_prediction WHERE email=%s AND date >= %s ORDER BY date""",
+                    (email, week_ago.strftime('%Y-%m-%d')))
+    else:
+        cur.execute("""SELECT date,prediction FROM stress_prediction WHERE email=%s ORDER BY date""", (email,))
+    data = cur.fetchall()
+    dates = [str(row[0]) for row in data]
+    stress_levels = [row[1] for row in data]
+    return render_template('dashboard.html', dates=dates, stress_levels=stress_levels, current_filter=filter_type)
+
+# -------------------------------
 # RUN APP
 # -------------------------------
-if __name__ == "__main__":
+if __name__=="__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
