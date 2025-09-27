@@ -71,7 +71,7 @@ def admin_panel():
         cur.execute("SELECT * FROM allowed_emails")
         allowed_emails = cur.fetchall()
 
-        cur.execute("SELECT Id, Name, Email FROM users")  # Table renamed to "users"
+        cur.execute("SELECT Id, Name, Email FROM user")  # Table renamed to "users"
         registered_users = cur.fetchall()
 
         # Replace 'something()' with your actual logic if needed
@@ -114,7 +114,7 @@ def delete_email(id):
 @app.route('/admin/delete_user/<int:id>')
 def delete_user(id):
     try:
-        cur.execute("DELETE FROM users WHERE Id=%s", (id,))
+        cur.execute("DELETE FROM user WHERE Id=%s", (id,))
         conn.commit()
         flash("✅ Registered user deleted successfully", "success")
     except:
@@ -131,7 +131,7 @@ def login():
         useremail = request.form['useremail']
         userpassword = request.form['userpassword']
 
-        cur.execute("SELECT * FROM users WHERE Email=%s AND Password=%s", (useremail, userpassword))
+        cur.execute("SELECT * FROM user WHERE Email=%s AND Password=%s", (useremail, userpassword))
         data = cur.fetchall()
 
         if not data:
