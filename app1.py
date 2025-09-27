@@ -170,20 +170,20 @@ def registration():
         cur.execute("SELECT * FROM users WHERE Email=%s", (useremail,))
         data = cur.fetchall()
 
-        if not data:
-            try:
-                cur.execute(
-                    "INSERT INTO users(Name, Email, Password, Age, Mob) VALUES (%s, %s, %s, %s, %s)",
-                    (username, useremail, userpassword, Age, contact)
-                )
-                conn.commit()
-                flash("✅ Registered successfully", "success")
-                return redirect("/login")
-            except Exception as e:
-                conn.rollback()
-                flash(f"❌ Registration failed: {str(e)}", "danger")
-                return redirect("/registration")
-        else:
+       if not data:
+    try:
+        cur.execute(
+            "INSERT INTO users(Name, Email, Password, Age, Mob) VALUES (%s, %s, %s, %s, %s)",
+            (username, useremail, userpassword, int(Age), contact)
+        )
+        conn.commit()
+        flash("✅ Registered successfully", "success")
+        return redirect("/login")
+    except Exception as e:
+        conn.rollback()
+        flash(f"❌ Registration failed: {str(e)}", "danger")
+        return redirect("/registration")
+       else:
             flash("⚠️ User already registered. Try logging in.", "warning")
             return redirect("/registration")
 
