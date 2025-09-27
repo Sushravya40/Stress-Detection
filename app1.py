@@ -2,23 +2,20 @@ import os
 from flask import Flask, render_template, request, session, redirect, url_for, flash
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestRegressor, StackingRegressor, AdaBoostRegressor
 from sklearn.tree import ExtraTreeRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
-import mysql.connector
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from datetime import datetime, timedelta
 
 # -------------------------------
-# DATABASE SETUP (MySQL)
+# DATABASE SETUP (PostgreSQL)
 # -------------------------------
-db = mysql.connector.connect(
-    host='localhost',
-    user='root',
-    password='',
-    database='Stress1'
-)
-cur = db.cursor()
+DATABASE_URL = os.environ.get("DATABASE_URL") or "postgresql://stressdb_y8l1_user:nkUESsYvS6ESRcUCquMOTazBZjCa6GQ4@dpg-d3ae75fdiees73d6lkhg-a/stressdb_y8l1"
+conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+cur = conn.cursor(cursor_factory=RealDictCursor)
 
 # -------------------------------
 # FLASK APP SETUP
@@ -29,8 +26,13 @@ app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
 # -------------------------------
 # ADMIN CREDENTIALS
 # -------------------------------
-admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
-admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
+admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+
+# -------------------------------
+# GLOBAL VARIABLES FOR MODEL
+# -------------------------------
+x_train = x_test = y_train = y_test = df = None
 
 # -------------------------------
 # ROUTES
@@ -68,17 +70,15 @@ def admin_panel():
     if not session.get('admin_logged_in'):
         flash('Please log in as admin to access the admin panel.', 'danger')
         return redirect(url_for('admin_login'))
-
     try:
         cur.execute("SELECT * FROM allowed_emails")
         allowed_emails = cur.fetchall()
-        cur.execute("SELECT Id, Name, Email FROM user")
+        cur.execute("SELECT Id, Name, Email FROM users")
         registered_users = cur.fetchall()
     except Exception as e:
         print(e)
         allowed_emails = []
         registered_users = []
-
     return render_template('admin_panel.html', allowed_emails=allowed_emails, registered_users=registered_users)
 
 @app.route('/admin_logout')
@@ -92,10 +92,10 @@ def add_email():
     email = request.form['email']
     try:
         cur.execute("INSERT INTO allowed_emails (email) VALUES (%s)", (email,))
-        db.commit()
+        conn.commit()
         flash("✅ Email added successfully", "success")
     except Exception as e:
-        db.rollback()
+        conn.rollback()
         flash(f"❌ Failed to add email: {str(e)}", "danger")
     return redirect(url_for('admin_panel'))
 
@@ -103,21 +103,21 @@ def add_email():
 def delete_email(id):
     try:
         cur.execute("DELETE FROM allowed_emails WHERE id=%s", (id,))
-        db.commit()
+        conn.commit()
         flash("✅ Allowed email deleted successfully", "success")
     except:
-        db.rollback()
+        conn.rollback()
         flash("❌ Failed to delete allowed email", "danger")
     return redirect(url_for('admin_panel'))
 
 @app.route('/admin/delete_user/<int:id>')
 def delete_user(id):
     try:
-        cur.execute("DELETE FROM user WHERE Id=%s", (id,))
-        db.commit()
+        cur.execute("DELETE FROM users WHERE Id=%s", (id,))
+        conn.commit()
         flash("✅ Registered user deleted successfully", "success")
     except:
-        db.rollback()
+        conn.rollback()
         flash("❌ Failed to delete user", "danger")
     return redirect(url_for('admin_panel'))
 
@@ -129,24 +129,21 @@ def login():
     if request.method=='POST':
         useremail = request.form['useremail']
         userpassword = request.form['userpassword']
-
-        cur.execute("SELECT * FROM user WHERE Email=%s AND Password=%s", (useremail, userpassword))
-        data = cur.fetchall()
-
+        cur.execute("SELECT * FROM users WHERE Email=%s AND Password=%s", (useremail, userpassword))
+        data = cur.fetchone()
         if not data:
             flash("❌ Invalid email or password. Please try again.", "danger")
             return redirect(url_for('login'))
         else:
-            session['email'] = useremail
-            session['name'] = data[0][1]
-            session['pno'] = str(data[0][4])
+            session['email'] = data['Email']
+            session['name'] = data['Name']
+            session['pno'] = str(data['Mob'])
             return render_template("userhome.html", myname=session['name'])
     return render_template('login.html')
 
 @app.route('/registration', methods=["POST", "GET"])
 def registration():
     allowed_domains = ['@techcorp.com', '@itcompany.com', '@cybertech.org', '@datasci.in', '@qaeng.com']
-
     if request.method == 'POST':
         username = request.form['username']
         useremail = request.form['useremail'].lower()
@@ -155,52 +152,57 @@ def registration():
         Age = request.form['Age']
         contact = request.form['contact']
 
-        # Check allowed domains
+        # Check email domain
         if not any(useremail.endswith(domain) for domain in allowed_domains):
             flash("❌ Registration allowed only for IT employees with approved email domains.", "danger")
             return redirect("/registration")
 
-        # Check password match
+        # Password match
         if userpassword != conpassword:
             flash("⚠️ Passwords do not match.", "warning")
             return redirect("/registration")
 
-        # Check if user already exists
-        cur.execute("SELECT * FROM user WHERE Email=%s", (useremail,))
-        data = cur.fetchall()
+        # Admin approval check
+        cur.execute("SELECT * FROM allowed_emails WHERE email=%s", (useremail,))
+        allowed = cur.fetchone()
+        if not allowed:
+            flash("⚠️ Your email is not approved by admin.", "danger")
+            return redirect("/registration")
 
-        if not data:
+        # Existing user check
+        cur.execute("SELECT * FROM users WHERE Email=%s", (useremail,))
+        existing = cur.fetchone()
+        if not existing:
             try:
-                cur.execute("INSERT INTO user(Name, Email, Password, Age, Mob) VALUES (%s,%s,%s,%s,%s)",
+                cur.execute("INSERT INTO users(Name, Email, Password, Age, Mob) VALUES (%s,%s,%s,%s,%s)",
                             (username, useremail, userpassword, Age, contact))
-                db.commit()
+                conn.commit()
                 flash("✅ Registered successfully", "success")
                 return redirect("/login")
             except Exception as e:
-                db.rollback()
+                conn.rollback()
                 flash(f"❌ Registration failed: {str(e)}", "danger")
                 return redirect("/registration")
         else:
             flash("⚠️ User already registered. Try logging in.", "warning")
             return redirect("/registration")
-
     return render_template('registration.html')
 
 # -------------------------------
 # DATASET LOAD & PREPROCESS
 # -------------------------------
-DATASET_PATH = "stress_detection_IT_professionals_dataset.csv"
+DATASET_URL = "https://YOUR_RENDER_FILE_URL/stress_detection_IT_professionals_dataset.csv"
 x_train = x_test = y_train = y_test = df = None
 
 @app.route('/viewdata', methods=["GET","POST"])
 def viewdata():
-    df = pd.read_csv(DATASET_PATH)
+    df = pd.read_csv(DATASET_URL)
     return render_template("viewdata.html", columns=df.columns.values, rows=df.values.tolist())
 
 @app.route('/preprocess', methods=['GET'])
 def preprocess():
     global x, y, x_train, x_test, y_train, y_test, df
-    df = pd.read_csv(DATASET_PATH)
+    df = pd.read_csv(DATASET_URL)
     x = df.drop('Stress_Level', axis=1)
     y = df['Stress_Level']
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
@@ -274,7 +276,7 @@ def prediction():
                        (email, heart_rate, skin_conductivity, hours_worked, emails_sent, meetings_attended, prediction, date)
                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (email, f1, f2, f3, f4, f5, float(result), date))
-        db.commit()
+        conn.commit()
 
         stress_value = float(result)
         if stress_value < 20:
@@ -301,9 +303,7 @@ def prediction():
 def dashboard():
     email = session.get('email')
     filter_type = request.args.get('filter', 'all')
-
     if filter_type == 'week':
-        from datetime import datetime, timedelta
         today = datetime.today()
         week_ago = today - timedelta(days=7)
         cur.execute("""SELECT date, prediction FROM stress_prediction 
@@ -312,12 +312,12 @@ def dashboard():
         cur.execute("""SELECT date, prediction FROM stress_prediction 
                        WHERE email=%s ORDER BY date""", (email,))
     data = cur.fetchall()
-    dates = [str(row[0]) for row in data]
-    stress_levels = [row[1] for row in data]
+    dates = [str(row['date']) for row in data]
+    stress_levels = [row['prediction'] for row in data]
     return render_template('dashboard.html', dates=dates, stress_levels=stress_levels, current_filter=filter_type)
 
 # -------------------------------
 # RUN APP
 # -------------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
