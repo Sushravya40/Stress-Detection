@@ -95,11 +95,11 @@ def add_email():
         cur.execute("INSERT INTO allowed_emails (email) VALUES (%s)", (email,))
         conn.commit()
         flash("✅ Email added successfully", "success")
-    except Exception as e:
+     except Exception as e:
         conn.rollback()
         flash(f"❌ Failed to add email: {str(e)}", "danger")
     return redirect(url_for('admin_panel'))
-
+    
 @app.route('/admin/delete_email/<int:id>')
 def delete_email(id):
     try:
