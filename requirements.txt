@@ -8,6 +8,6 @@ flask==3.1.2
 pandas==2.3.2
 numpy
 scikit-learn==1.7.2
-psycopg2-binary==2.9.9
+psycopg2-binary
 gunicorn==21.2.0
 
