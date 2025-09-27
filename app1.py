@@ -27,6 +27,11 @@ admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
 admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
 
 # -------------------------------
+# GLOBAL VARIABLES FOR MODEL
+# -------------------------------
+x_train = x_test = y_train = y_test = None
+
+# -------------------------------
 # ROUTES
 # -------------------------------
 @app.route('/')
@@ -66,7 +71,6 @@ def admin_panel():
     try:
         cur.execute("SELECT * FROM allowed_emails")
         allowed_emails = cur.fetchall()
-
         cur.execute("SELECT Id, Name, Email FROM users")
         registered_users = cur.fetchall()
     except Exception as e:
@@ -124,10 +128,8 @@ def login():
     if request.method == 'POST':
         useremail = request.form['useremail']
         userpassword = request.form['userpassword']
-
         cur.execute("SELECT * FROM users WHERE Email=%s AND Password=%s", (useremail, userpassword))
         data = cur.fetchall()
-
         if not data:
             flash("❌ Invalid email or password. Please try again.", "danger")
             return redirect(url_for('login'))
@@ -181,7 +183,129 @@ def registration():
     return render_template('registration.html')
 
 # -------------------------------
+# DATASET LOAD & PREPROCESS
+# -------------------------------
+DATASET_URL = "https://YOUR_RENDER_FILE_URL/stress_detection_IT_professionals_dataset.csv"
+
+@app.route('/viewdata')
+def viewdata():
+    df = pd.read_csv(DATASET_URL)
+    return render_template("viewdata.html", columns=df.columns.values, rows=df.values.tolist())
+
+@app.route('/preprocess')
+def preprocess():
+    global x_train, x_test, y_train, y_test
+    df = pd.read_csv(DATASET_URL)
+    x = df.drop('Stress_Level', axis=1)
+    y = df['Stress_Level']
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
+    flash("✅ Data preprocessed successfully!", "success")
+    return redirect(url_for('home'))
+
+# -------------------------------
+# MODEL TRAINING
+# -------------------------------
+@app.route('/model', methods=["POST", "GET"])
+def model():
+    global x_train, x_test, y_train, y_test
+    try:
+        _ = x_train.shape
+    except NameError:
+        flash("⚠️ Please run Preprocess first!", "warning")
+        return redirect(url_for('home'))
+
+    if request.method == "POST":
+        algo = int(request.form['algo'])
+        if algo == 1:
+            model = RandomForestRegressor()
+        elif algo == 2:
+            model = AdaBoostRegressor()
+        elif algo == 3:
+            model = ExtraTreeRegressor()
+        elif algo == 4:
+            base_model = [('rf', RandomForestRegressor()), ('dt', ExtraTreeRegressor())]
+            model = StackingRegressor(estimators=base_model, final_estimator=AdaBoostRegressor())
+        else:
+            flash("⚠️ Invalid algorithm selection.", "danger")
+            return redirect(url_for('home'))
+
+        model.fit(x_train, y_train)
+        y_pred = model.predict(x_test)
+        score = r2_score(y_test, y_pred) * 100
+        flash(f"Model trained! Accuracy: {score:.2f}%", "success")
+    return redirect(url_for('home'))
+
+# -------------------------------
+# PREDICTION
+# -------------------------------
+@app.route('/prediction', methods=["POST","GET"])
+def prediction():
+    if request.method == 'POST':
+        try:
+            f1 = float(request.form['Heart_Rate'])
+            f2 = float(request.form['Skin_Conductivity'])
+            f3 = float(request.form['Hours_Worked'])
+            f4 = float(request.form['Emails_Sent'])
+            f5 = float(request.form['Meetings_Attended'])
+            date = request.form['date']
+            email = session.get('email')
+            features = [f1, f2, f3, f4, f5]
+        except (ValueError, KeyError):
+            flash("⚠️ Invalid input.", "danger")
+            return redirect(url_for('prediction'))
+
+        model = RandomForestRegressor()
+        model.fit(x_train, y_train)
+        result = model.predict([features])[0]
+
+        cur.execute("""INSERT INTO stress_prediction 
+                       (email, heart_rate, skin_conductivity, hours_worked, emails_sent, meetings_attended, prediction, date)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (email, f1, f2, f3, f4, f5, float(result), date))
+        conn.commit()
+
+        stress_value = float(result)
+        if stress_value < 20:
+            suggestion = "Low Stress: Maintain healthy routine, sleep well, exercise."
+            counseling_links = None
+        elif stress_value < 30:
+            suggestion = "Moderate Stress: Take breaks, practice meditation, avoid multitasking."
+            counseling_links = None
+        else:
+            suggestion = "High Stress: Seek counseling, reduce workload, rest."
+            counseling_links = [
+                {"name": "NIMHANS", "url": "https://www.nimhans.ac.in/"},
+                {"name": "iCall by TISS", "url": "https://icallhelpline.org/"},
+                {"name": "YourDOST", "url": "https://yourdost.com/"},
+            ]
+        return render_template("prediction.html", msg=f"Stress Level: {stress_value:.2f}%", suggestion=suggestion, counseling_links=counseling_links)
+
+    return render_template("prediction.html")
+
+# -------------------------------
+# DASHBOARD
+# -------------------------------
+@app.route('/dashboard')
+def dashboard():
+    email = session.get('email')
+    filter_type = request.args.get('filter', 'all')
+
+    if filter_type == 'week':
+        from datetime import datetime, timedelta
+        today = datetime.today()
+        week_ago = today - timedelta(days=7)
+        cur.execute("""SELECT date, prediction FROM stress_prediction 
+                       WHERE email=%s AND date >= %s ORDER BY date""", (email, week_ago.strftime('%Y-%m-%d')))
+    else:
+        cur.execute("""SELECT date, prediction FROM stress_prediction 
+                       WHERE email=%s ORDER BY date""", (email,))
+    data = cur.fetchall()
+    dates = [str(row[0]) for row in data]
+    stress_levels = [row[1] for row in data]
+    return render_template('dashboard.html', dates=dates, stress_levels=stress_levels, current_filter=filter_type)
+
+# -------------------------------
 # RUN APP
 # -------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 500
