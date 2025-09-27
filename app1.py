@@ -70,6 +70,8 @@ def admin_panel():
     allowed_emails = cur.fetchall()
     cur.execute("SELECT Id, Name, Email FROM users")  # Table renamed to "users"
     registered_users = cur.fetchall()
+     except Exception as e:
+        return f"Database Error: {str(e)}"
     return render_template('admin_panel.html', allowed_emails=allowed_emails, registered_users=registered_users)
 
 @app.route('/admin_logout')
