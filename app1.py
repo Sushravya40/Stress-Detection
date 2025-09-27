@@ -127,31 +127,35 @@ def delete_user(id):
 @app.route('/login', methods=['POST','GET'])
 def login():
     if request.method == 'POST':
-        useremail = request.form['useremail']
-        userpassword = request.form['userpassword']
+        useremail = request.form['useremail'].strip().lower()
+        userpassword = request.form['userpassword'].strip()
+
         cur.execute("SELECT * FROM users WHERE Email=%s AND Password=%s", (useremail, userpassword))
-        data = cur.fetchall()
-        if not data:
+        user = cur.fetchone()  # Use fetchone instead of fetchall
+
+        if not user:
             flash("❌ Invalid email or password. Please try again.", "danger")
             return redirect(url_for('login'))
         else:
             session['email'] = useremail
-            session['name'] = data[0][1]
-            session['pno'] = str(data[0][5])
+            session['name'] = user[1]
+            session['pno'] = str(user[5])
             return render_template("userhome.html", myname=session['name'])
+
     return render_template('login.html')
+
 
 @app.route('/registration', methods=["POST", "GET"])
 def registration():
     allowed_domains = ['@techcorp.com', '@itcompany.com', '@cybertech.org', '@datasci.in', '@qaeng.com']
 
     if request.method == 'POST':
-        username = request.form['username']
-        useremail = request.form['useremail'].lower()
-        userpassword = request.form['userpassword']
-        conpassword = request.form['conpassword']
-        Age = request.form['Age']
-        contact = request.form['contact']
+        username = request.form['username'].strip()
+        useremail = request.form['useremail'].strip().lower()
+        userpassword = request.form['userpassword'].strip()
+        conpassword = request.form['conpassword'].strip()
+        Age = request.form['Age'].strip()
+        contact = request.form['contact'].strip()
 
         if not any(useremail.endswith(domain) for domain in allowed_domains):
             flash("❌ Registration allowed only for IT employees with approved email domains.", "danger")
@@ -162,26 +166,27 @@ def registration():
             return redirect("/registration")
 
         cur.execute("SELECT * FROM users WHERE Email=%s", (useremail,))
-        data = cur.fetchall()
+        existing = cur.fetchone()
 
-        if not data:
-            try:
-                cur.execute(
-                    "INSERT INTO users(Name, Email, Password, Age, Mob) VALUES (%s, %s, %s, %s, %s)",
-                    (username, useremail, userpassword, Age, contact)
-                )
-                conn.commit()
-                flash("✅ Registered successfully", "success")
-                return redirect("/login")
-            except Exception as e:
-                conn.rollback()
-                flash(f"❌ Registration failed: {str(e)}", "danger")
-                return redirect("/registration")
-        else:
+        if existing:
             flash("⚠️ User already registered. Try logging in.", "warning")
             return redirect("/registration")
 
+        try:
+            cur.execute(
+                "INSERT INTO users(Name, Email, Password, Age, Mob) VALUES (%s, %s, %s, %s, %s)",
+                (username, useremail, userpassword, Age, contact)
+            )
+            conn.commit()
+            flash("✅ Registered successfully", "success")
+            return redirect("/login")
+        except Exception as e:
+            conn.rollback()
+            flash(f"❌ Registration failed: {str(e)}", "danger")
+            return redirect("/registration")
+
     return render_template('registration.html')
+
 
 # -------------------------------
 # DATASET LOAD & PREPROCESS
