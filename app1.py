@@ -95,9 +95,9 @@ def add_email():
         cur.execute("INSERT INTO allowed_emails (email) VALUES (%s)", (email,))
         conn.commit()
         flash("✅ Email added successfully", "success")
-    except:
+    except Exception as e:
         conn.rollback()
-        flash("❌ Failed to add email", "danger")
+        flash(f"❌ Failed to add email: {str(e)}", "danger")
     return redirect(url_for('admin_panel'))
 
 @app.route('/admin/delete_email/<int:id>')
@@ -143,10 +143,10 @@ def login():
             session['pno'] = str(data[0][4])
             return render_template("userhome.html", myname=session['name'])
     return render_template('login.html')
-
 @app.route('/registration', methods=["POST", "GET"])
 def registration():
     allowed_domains = ['@techcorp.com', '@itcompany.com', '@cybertech.org', '@datasci.in', '@qaeng.com']
+
     if request.method == 'POST':
         username = request.form['username']
         useremail = request.form['useremail'].lower()
@@ -155,26 +155,39 @@ def registration():
         Age = request.form['Age']
         contact = request.form['contact']
 
+        # Check email domain
         if not any(useremail.endswith(domain) for domain in allowed_domains):
             flash("❌ Registration allowed only for IT employees with approved email domains.", "danger")
             return redirect("/registration")
 
+        # Check password match
         if userpassword != conpassword:
             flash("⚠️ Passwords do not match.", "warning")
             return redirect("/registration")
 
+        # Check if user already exists
         cur.execute("SELECT * FROM users WHERE Email=%s", (useremail,))
         data = cur.fetchall()
+
         if not data:
-            cur.execute("INSERT INTO users(Name, Email, Password, Age, Mob) VALUES (%s, %s, %s, %s, %s)",
-                        (username, useremail, userpassword, Age, contact))
-            conn.commit()
-            flash("✅ Registered successfully", "success")
-            return redirect("/login")
+            try:
+                cur.execute(
+                    "INSERT INTO users(Name, Email, Password, Age, Mob) VALUES (%s, %s, %s, %s, %s)",
+                    (username, useremail, userpassword, int(Age), contact)
+                )
+                conn.commit()
+                flash("✅ Registered successfully", "success")
+                return redirect("/login")
+            except Exception as e:
+                conn.rollback()
+                flash(f"❌ Registration failed: {str(e)}", "danger")
+                return redirect("/registration")
         else:
             flash("⚠️ User already registered. Try logging in.", "warning")
             return redirect("/registration")
+
     return render_template('registration.html')
+
 
 # -------------------------------
 # DATASET LOAD & PREPROCESS
