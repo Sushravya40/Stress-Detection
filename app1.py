@@ -10,10 +10,11 @@ import psycopg2
 # -------------------------------
 # DATABASE SETUP (PostgreSQL)
 # -------------------------------
-DATABASE_URL = "postgresql://postgres:NewStrongPassword123!@localhost:5432/Stress1"
-conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-cur = conn.cursor()
+DATABASE_URL = "postgresql://stressdb_y8l1_user:nkUESsYvS6ESRcUCquMOTazBZjCa6GQ4@dpg-d3ae75fdiees73d6lkhg-a/stressdb_y8l1"
 
+# Internal URL does not require SSL
+conn = psycopg2.connect(DATABASE_URL)
+cursor = conn.cursor()
 # -------------------------------
 # FLASK APP SETUP
 # -------------------------------
