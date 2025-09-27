@@ -92,6 +92,7 @@ def add_email():
         flash(f"❌ Failed to add email: {str(e)}", "danger")
     return redirect(url_for('admin_panel'))
 
+
 @app.route('/admin/delete_email/<int:id>')
 def delete_email(id):
     try:
@@ -136,6 +137,7 @@ def login():
 @app.route('/registration', methods=['POST','GET'])
 def registration():
     allowed_domains = ['@techcorp.com', '@itcompany.com', '@cybertech.org', '@datasci.in', '@qaeng.com']
+    
     if request.method == 'POST':
         username = request.form['username']
         useremail = request.form['useremail'].lower()
@@ -144,15 +146,20 @@ def registration():
         Age = request.form['Age']
         contact = request.form['contact']
 
+        # Email domain check
         if not any(useremail.endswith(domain) for domain in allowed_domains):
             flash("❌ Registration allowed only for IT employees.", "danger")
             return redirect("/registration")
+
+        # Password match
         if userpassword != conpassword:
             flash("⚠️ Passwords do not match.", "warning")
             return redirect("/registration")
 
+        # Check if user exists
         cur.execute("SELECT * FROM users WHERE Email=%s", (useremail,))
         data = cur.fetchall()
+
         if not data:
             try:
                 cur.execute(
@@ -167,9 +174,11 @@ def registration():
                 flash(f"❌ Registration failed: {str(e)}", "danger")
                 return redirect("/registration")
         else:
-            flash("⚠️ User already registered.", "warning")
+            flash("⚠️ User already registered. Try logging in.", "warning")
             return redirect("/registration")
+    
     return render_template('registration.html')
+
 
 # -------------------------------
 # DATASET LOAD & PREPROCESS
