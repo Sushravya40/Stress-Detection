@@ -67,14 +67,19 @@ def admin_panel():
         flash('Please log in as admin to access the admin panel.', 'danger')
         return redirect(url_for('admin_login'))
 
-    cur.execute("SELECT * FROM allowed_emails")
-    allowed_emails = cur.fetchall()
-    cur.execute("SELECT Id, Name, Email FROM users")  # Table renamed to "users"
-    registered_users = cur.fetchall()
-     try:
-    something()
-except Exception as e:
-    print(e)
+    try:
+        cur.execute("SELECT * FROM allowed_emails")
+        allowed_emails = cur.fetchall()
+
+        cur.execute("SELECT Id, Name, Email FROM users")  # Table renamed to "users"
+        registered_users = cur.fetchall()
+
+        # Replace 'something()' with your actual logic if needed
+    except Exception as e:
+        print(e)
+        allowed_emails = []
+        registered_users = []
+
     return render_template('admin_panel.html', allowed_emails=allowed_emails, registered_users=registered_users)
 
 @app.route('/admin_logout')
